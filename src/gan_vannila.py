@@ -81,16 +81,14 @@ class GGAN:
         G_real = tf.reshape(G_sample, [-1, 28, 28])
         G_t = tf.transpose(G_real, perm=[0, 2, 1])
         G_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
-            logits=D_logit_fake, labels=tf.ones_like(D_logit_fake))) \
-            + 0.1 * tf.reduce_mean(tf.norm(G_real - G_t,
-                                           axis=(1, 2), ord='fro'))
+            logits=D_logit_fake, labels=tf.ones_like(D_logit_fake)))
         # global_step = tf.Variable(0, trainable=False)
         # learning_rate = tf.train.inverse_time_decay(0.9, global_step, \
         # 1, 1)
         D_solver = tf.train.GradientDescentOptimizer(0.01).minimize(D_loss,
-                                                                    var_list=self.theta_D)
+                    var_list=self.theta_D)
         G_solver = tf.train.AdamOptimizer().minimize(G_loss,
-                                                     var_list=self.theta_G)
+                    var_list=self.theta_G)
         # Training
         sess = tf.Session()
         sess.run(tf.global_variables_initializer())

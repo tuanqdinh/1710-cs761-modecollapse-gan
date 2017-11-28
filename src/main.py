@@ -1,6 +1,6 @@
 import numpy as np
 import os
-from gan_vannila import GGAN
+from gan_vannila_cg import GGAN
 from tensorflow.examples.tutorials.mnist import input_data
 from __init__ import *
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
@@ -15,8 +15,8 @@ if __name__ == '__main__':
     gg = GGAN(im_size, model_name)
     if trainning:
         batch_size = 64
-        n_epochs = 50000
-        print_counter = 1000
+        n_epochs = 5000
+        print_counter = 100
         inp_path = os.path.abspath('../out_samples/inp_training')
         out_path = os.path.abspath('../out_samples/out_gen')
         gg.build_model(data, batch_size, n_epochs, print_counter,
