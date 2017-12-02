@@ -10,8 +10,6 @@ class DataSampler(object):
         self.sorted = [ ds[lab == i] for i in range(10)]
         self.sizes = [self.sorted[i].shape[0] for i in range(10)]
 
-        imgs, labs = self.labeled_batch(2,0)
-
     def labeled_batch(self, size, lab):
         a = []
         b = np.zeros((size, 1000))
