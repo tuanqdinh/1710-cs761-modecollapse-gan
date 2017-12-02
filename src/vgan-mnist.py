@@ -23,11 +23,11 @@ class VGAN(object):
     def __init__(self, model_folder):
         self.dim_z = 128  # Noise size
         self.im_size = 28
-        self.dim_x = self.im_size ** 2  # Real input Size
+        self._x = self.im_size ** 2  # Real input Size
         self.dim_h = 64  # hidden layers
         self.model_name = model_folder + '/vgan_mnist.ckpt'
         self.Z = tf.placeholder(tf.float32, shape=[None, self.dim_z])
-        self.X = tf.placeholder(tf.float32, shape=[None, self.dim_x])
+        self.X = tf.placeholder(tf.float32, shape=[None, self._x])
 
     def generator(self, z):
         fc1 = lib.ops.linear.Linear('Generator.Input', self.dim_z, 4*4*4*self.dim_h, z)
@@ -45,7 +45,7 @@ class VGAN(object):
         out_deconv3 = tf.nn.sigmoid(deconv3)
 
         # different from DCGAN - deconv 4
-        return tf.reshape(out_deconv3, [-1, self.dim_x])
+        return tf.reshape(out_deconv3, [-1, self._x])
 
     def discriminator(self, x):
         # Is it correct - 1 channel in 2nd pos
@@ -69,7 +69,8 @@ class VGAN(object):
         # sample from a gaussian distribution
         return np.random.normal(size=[m, n], loc = 0, scale = 1)
 
-    def train(self, gen, batch_size, n_iters, print_counter, out_path):
+    def build_model(self, batch_size, n_iters, print_counter,
+                    out_path):
         G_sample = self.generator(self.Z)
         D_fake = self.discriminator(G_sample)
         D_real = self.discriminator(self.X)
@@ -110,6 +111,9 @@ class VGAN(object):
         with tf.Session() as sess:
             sess.run(tf.global_variables_initializer())
             saver = tf.train.Saver()
+
+            gen = input_data.read_data_sets('../dataset/MNIST_data', one_hot=True)
+
             start_tic = time.clock()
             tic = time.clock()
             for it in range(n_iters):
@@ -138,7 +142,7 @@ class VGAN(object):
                     saver.save(sess, self.model_name, global_step=it)
 
             saver.save(sess, self.model_name)
-
+            
             end_toc = time.clock()
             print('Time for training: {}'.format(end_toc - start_tic))
 
