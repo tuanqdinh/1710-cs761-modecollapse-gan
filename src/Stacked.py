@@ -26,7 +26,7 @@ class DataSampler(object):
             c1 = self.sorted[ind[0]][np.random.randint(sizes[ind[0]])]
             c2 = self.sorted[ind[1]][np.random.randint(sizes[ind[1]])]
             c3 = self.sorted[ind[2]][np.random.randint(sizes[ind[2]])]
-            c = np.hstack((c1,c2,c3))
+            c = np.vstack((c1,c2,c3))
             a = a + [c]
         a = np.array(a)
         return a,b
@@ -43,8 +43,8 @@ class DataSampler(object):
             c1 = self.sorted[ind[0]][np.random.randint(sizes[ind[0]])]
             c2 = self.sorted[ind[1]][np.random.randint(sizes[ind[1]])]
             c3 = self.sorted[ind[2]][np.random.randint(sizes[ind[2]])]
-            c = np.vstack((c1,c2,c3))
-            a = a + [c.T]
+            c = np.hstack((c1,c2,c3))
+            a = a + [c]
         a = np.array(a)
         return a,b
 
