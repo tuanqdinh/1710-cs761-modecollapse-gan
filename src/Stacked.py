@@ -48,7 +48,3 @@ class DataSampler(object):
         a = np.array(a)
         return a,b
 
-if __name__ == "__main__":
-    a = DataSampler()
-    print a.next_batch(10)[0].shape
-    print a.next_batch(10)[1].shape
