@@ -3,8 +3,8 @@ import numpy as np
 import os
 import time
 from tensorflow.examples.tutorials.mnist import input_data
-from Stacked import DataSampler
 import tflib as lib
+from Stacked import DataSampler
 import tflib.ops.conv2d
 import tflib.ops.deconv2d
 import tflib.ops.linear
@@ -24,11 +24,11 @@ class VGAN(object):
     def __init__(self, model_folder):
         self.dim_z = 128  # Noise size
         self.im_size = 28
-        self._x = (self.im_size ** 2)  # Real input Size
+        self._x = 3*(self.im_size ** 2)  # Real input Size
         self.dim_h = 64  # hidden layers
         self.model_name = model_folder + '/vgan_mnist.ckpt'
         self.Z = tf.placeholder(tf.float32, shape=[None, self.dim_z])
-        self.X = tf.placeholder(tf.float32, shape=[None,3, self._x])
+        self.X = tf.placeholder(tf.float32, shape=[None, self._x])
 
     def generator(self, z):
         fc1 = lib.ops.linear.Linear('Generator.Input', self.dim_z, 4*4*4*self.dim_h, z)
@@ -42,17 +42,17 @@ class VGAN(object):
         deconv2 = lib.ops.deconv2d.Deconv2D('Generator.3', 2*self.dim_h, self.dim_h, 5, out_deconv1)
         out_deconv2 = tf.nn.relu(deconv2)
 
-        deconv3 = lib.ops.deconv2d.Deconv2D('Generator.5', self.dim_h, 3, 5, out_deconv2)
+        deconv3 = lib.ops.deconv2d.Deconv2D('Generator.5', self.dim_h, 1, 5, out_deconv2)
         out_deconv3 = tf.nn.sigmoid(deconv3)
 
         # different from DCGAN - deconv 4
-        return tf.reshape(out_deconv3, [-1,3, self._x])
+        return tf.reshape(out_deconv3, [-1, self._x])
 
     def discriminator(self, x):
         # Is it correct - 1 channel in 2nd pos
-        im = tf.reshape(x, [-1, 3, self.im_size, self.im_size])
+        im = tf.reshape(x, [-1, 1, self.im_size, self.im_size])
 
-        conv1 = lib.ops.conv2d.Conv2D('Discriminator.1', 3, self.dim_h, 5, im, stride=2)
+        conv1 = lib.ops.conv2d.Conv2D('Discriminator.1', 1, self.dim_h, 5, im, stride=2)
         out_conv1 = LeakyReLU(conv1)
 
         conv2 = lib.ops.conv2d.Conv2D('Discriminator.2', self.dim_h, 2*self.dim_h, 5, out_conv1, stride=2)
@@ -73,10 +73,8 @@ class VGAN(object):
     def build_model(self, batch_size, n_iters, print_counter,
                     out_path):
         G_sample = self.generator(self.Z)
-        print(G_sample)
         D_fake = self.discriminator(G_sample)
         D_real = self.discriminator(self.X)
-        print(self.X)
 
         D_loss_real = tf.reduce_mean(D_real)
         D_loss_fake = tf.reduce_mean(D_fake)
@@ -85,12 +83,11 @@ class VGAN(object):
 
         # WGAN gradient penalty
         alpha = tf.random_uniform(
-            shape=[batch_size,3,784],
+            shape=[batch_size,1],
             minval=0.,
             maxval=1.
         )
-        interpolates = alpha*self.X 
-        interpolates += ((1-alpha)*G_sample)
+        interpolates = alpha*self.X + ((1-alpha)*G_sample)
         disc_interpolates = self.discriminator(interpolates)
         gradients = tf.gradients(disc_interpolates, [interpolates])[0]
         slopes = tf.sqrt(tf.reduce_sum(tf.square(gradients), reduction_indices=[1]))
@@ -122,6 +119,7 @@ class VGAN(object):
             start_tic = time.clock()
             tic = time.clock()
             for it in range(n_iters):
+                #_data, _ = gen.train.next_batch(batch_size)
                 _data, _ = gen.next_batch(batch_size)
                 # from IPython import embed; embed()
                 _, D_loss_curr = sess.run([D_solver, D_loss], feed_dict={
