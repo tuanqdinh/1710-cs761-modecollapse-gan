@@ -6,14 +6,14 @@ from helpers import *
 # os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 DATASET = '8gaussians' # 8gaussians, 25gaussians, swissroll
+N_POINTS = 128
+RANGE = 3
 
 class VGAN(object):
-    def __init__(self, im_size, model_name):
-        self.im_size = im_size  # image size
-        self.dim_z = 100  # Noise size
+    def __init__(self, model_name):
+        self.dim_z = 2  # Noise size
+        self.dim_x = 2  # Real input Size
         self.dim_h = 128  # hidden layers
-        self.dim_x_2 = int(im_size * (im_size + 1) / 2)
-        self.dim_x = im_size**2  # Real input Size
         self.model_name = model_name
 
         # Generator network params
@@ -22,10 +22,10 @@ class VGAN(object):
         self.G_W1 = tf.Variable(initializer(shape=[self.dim_z, self.dim_h]))
         self.G_b1 = tf.Variable(tf.zeros(shape=[self.dim_h]))
 
-        self.G_W2 = tf.Variable(initializer([self.dim_h, self.dim_x_2]))
-        self.G_b2 = tf.Variable(tf.zeros(shape=[self.dim_x_2]))
+        self.G_W2 = tf.Variable(initializer([self.dim_h, self.dim_h]))
+        self.G_b2 = tf.Variable(tf.zeros(shape=[self.dim_h]))
 
-        self.G_W3 = tf.Variable(initializer([self.dim_x_2, self.dim_x]))
+        self.G_W3 = tf.Variable(initializer([self.dim_h, self.dim_x]))
         self.G_b3 = tf.Variable(tf.zeros(shape=[self.dim_x]))
 
         self.theta_G = [self.G_W1, self.G_W2, self.G_W3,
@@ -40,7 +40,6 @@ class VGAN(object):
         self.theta_D = [self.D_W1, self.D_W2, self.D_b1, self.D_b2]
 
     def generator(self, z):
-        pkeep = 0.5
         G_h1 = tf.nn.relu(tf.matmul(z, self.G_W1) + self.G_b1)
         # G_h1 = tf.nn.dropout(G_h1, pkeep)
         G_h2 = tf.nn.relu(tf.matmul(G_h1, self.G_W2) + self.G_b2)
@@ -60,14 +59,14 @@ class VGAN(object):
 
     def sample_z(self, m, n):
         # sample from a gaussian distribution
-        # return np.random.normal(size=[m, n], loc = 0, scale = 1)
-        return np.random.uniform(-1., 1., size=[m, n])
+        return np.random.normal(size=[m, n], loc = 0, scale = 1)
+        # return tf.random_normal([m, n])
 
-    def build_model(self, data, batch_size, n_epochs, print_counter,
-                    inp_path, out_path, n_figs):
+    def build_model(self, batch_size, n_iters, print_counter,
+                    out_path):
         G_sample = self.generator(self.Z)
-        D_real, D_logit_real = self.discriminator(self.X)
         D_fake, D_logit_fake = self.discriminator(G_sample)
+        D_real, D_logit_real = self.discriminator(self.X)
 
         D_loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
             logits=D_logit_real,
@@ -79,13 +78,8 @@ class VGAN(object):
             labels=tf.zeros_like(D_logit_fake)))
         D_loss = D_loss_real + D_loss_fake
 
-        G_real = tf.reshape(G_sample, [-1, 28, 28])
-        G_t = tf.transpose(G_real, perm=[0, 2, 1])
         G_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
             logits=D_logit_fake, labels=tf.ones_like(D_logit_fake)))
-        # global_step = tf.Variable(0, trainable=False)
-        # learning_rate = tf.train.inverse_time_decay(0.9, global_step, \
-        # 1, 1)
         D_solver = tf.train.GradientDescentOptimizer(0.01).minimize(D_loss,
                     var_list=self.theta_D)
         G_solver = tf.train.AdamOptimizer().minimize(G_loss,
@@ -93,12 +87,13 @@ class VGAN(object):
         # Training
         with tf.Session() as sess:
             sess.run(tf.global_variables_initializer())
-            gen = inf_train_gen(DATASET) # data
+            gen = inf_train_gen(DATASET, batch_size) # data
             if not os.path.exists(out_path):
                 os.makedirs(out_path)
             tic = time.clock()
-            for it in range(n_epochs):
-                _data = next(gen)
+            for it in range(n_iters):
+                _data = next(gen) # batch_size?
+                # from IPython import embed; embed()
                 _, D_loss_curr = sess.run([D_solver, D_loss], feed_dict={
                     self.X: _data, self.Z: self.sample_z(batch_size, self.dim_z)})
                 _, G_loss_curr = sess.run([G_solver, G_loss], feed_dict={
@@ -106,22 +101,16 @@ class VGAN(object):
                 if it % print_counter == 0:
                     idx = it // print_counter
                     print('Iter: {}'.format(it))
-                    print('D loss: {:.4}'. format(D_loss_curr))
+                    print('D loss: {:.4}'.format(D_loss_curr))
                     print('G_loss: {:.4}'.format(G_loss_curr))
                     print()
                     # Plot:
-                    points = generate_image(_data)
+                    points = generate_image(N_POINTS, RANGE)
                     samples = sess.run(G_sample,
-                        feed_dict={self.Z: self.sample_z(self.dim_z)})
+                        feed_dict={self.Z: self.sample_z(N_POINTS, self.dim_z)})
+                    disc_map = sess.run(D_real,         feed_dict={self.X:points})
 
-                    plot(samples[:n_figs, :], self.im_size, out_path, idx)
-
-                    samples, disc_map = session.run(
-                        [fake_data, disc_real],
-                        feed_dict={real_data:points}
-                    )
-                    disc_map = session.run(disc_real, feed_dict={real_data:points})
-
+                    plot(N_POINTS, RANGE, disc_map, _data, samples, idx, out_path)
 
             toc = time.clock()
             print('Time for training: {}'.format(toc - tic))
@@ -130,15 +119,4 @@ class VGAN(object):
             saver.save(sess, self.model_name)
 
 
-
-        plt.clf()
-
-        x = y = np.linspace(-RANGE, RANGE, N_POINTS)
-        plt.contour(x,y,disc_map.reshape((len(x), len(y))).transpose())
-
-        plt.scatter(true_dist[:, 0], true_dist[:, 1], c='orange',  marker='+')
-        plt.scatter(samples[:, 0],    samples[:, 1],    c='green', marker='+')
-
-        plt.savefig('frame'+str(frame_index[0])+'.jpg')
-        frame_index[0] += 1
 # end class

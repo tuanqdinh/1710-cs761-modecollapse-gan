@@ -103,6 +103,7 @@ class GGAN:
         for it in range(n_epochs):
             #batch_samp = np.random.randint(dataset_size, size=batch_size)
             # X_raw = data[batch_samp, :]
+            data = input_data.read_data_sets('../dataset/MNIST_data',
             X_mb, _ = data.train.next_batch(batch_size)
             # X_mb = self.im_sizeormalize_image(X_raw)
             if it % print_counter == 0:
