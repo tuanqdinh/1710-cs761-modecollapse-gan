@@ -4,6 +4,7 @@ import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 import numpy as np
 import random
+import Reader
 
 from sklearn import datasets
 
@@ -24,6 +25,15 @@ def inf_train_gen(DATASET, BATCH_SIZE):
         dataset /= 2.828 # stdev
         while True:
             for i in range(int(len(dataset)/BATCH_SIZE)):
+                yield dataset[i*BATCH_SIZE:(i+1)*BATCH_SIZE]
+
+    elif DATASET == 'stacked_mnist':
+        a = Reader.DS()
+        while True:
+            p = np.random.permutation(a.size)
+            dd = a.data[p]
+            ll = a.data[p]
+            for i in range(int(a.size/BATCH_SIZE)):
                 yield dataset[i*BATCH_SIZE:(i+1)*BATCH_SIZE]
 
     elif DATASET == 'swissroll':
