@@ -4,13 +4,13 @@ import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 import numpy as np
 import random
+import Reader
 
 from sklearn import datasets
 
 # Dataset iterator
 def inf_train_gen(DATASET, BATCH_SIZE):
     if DATASET == '25gaussians':
-
         dataset = []
         for i in range(int(100000/25)):
             for x in range(-2, 3):
@@ -25,6 +25,15 @@ def inf_train_gen(DATASET, BATCH_SIZE):
         while True:
             for i in range(int(len(dataset)/BATCH_SIZE)):
                 yield dataset[i*BATCH_SIZE:(i+1)*BATCH_SIZE]
+
+    elif DATASET == 'stacked_mnist':
+        a = Reader.DS()
+        while True:
+            p = np.random.permutation(a.size)
+            dd = a.data[p]
+            ll = a.data[p]
+            for i in range(int(a.size/BATCH_SIZE)):
+                yield dd[i*BATCH_SIZE:(i+1)*BATCH_SIZE], ll[i*BATCH_SIZE:(i+1)*BATCH_SIZE]
 
     elif DATASET == 'swissroll':
 
@@ -97,6 +106,23 @@ def save_fig_mnist25(samples, out_path, idx):
         ax.set_yticklabels([])
         ax.set_aspect('equal')
         plt.imshow(sample.reshape(28, 28), cmap='Greys_r')
+
+    plt.savefig(out_path + '/{}.png'.format(str(idx).zfill(3)), bbox_inches='tight')
+    plt.close(fig)
+
+def save_fig_mnist_color_25(samples, out_path, idx):
+    fig = plt.figure(figsize=(5, 5))
+    gs = gridspec.GridSpec(5, 5)
+    gs.update(wspace=0.05, hspace=0.05)
+
+    for i, sample in enumerate(samples):
+        ax = plt.subplot(gs[i])
+        plt.axis('off')
+        ax.set_xticklabels([])
+        ax.set_yticklabels([])
+        ax.set_aspect('equal')
+        s = sample.reshape(3, 28, 28)
+        plt.imshow(s.transpose(1, 2, 0))
 
     plt.savefig(out_path + '/{}.png'.format(str(idx).zfill(3)), bbox_inches='tight')
     plt.close(fig)
