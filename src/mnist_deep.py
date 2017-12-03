@@ -31,6 +31,7 @@ def bias_variable(shape):
 class MNIST(object):
 	def __init__(self):
 		# Create the model
+		self.model_name = './mnist_models/mnist.ckpt'
 		self.x = tf.placeholder(tf.float32, [None, 784])
 		# Define loss and optimizer
 		self.y_ = tf.placeholder(tf.float32, [None, 10])
@@ -93,7 +94,7 @@ class MNIST(object):
 			print('test accuracy %g' % accuracy.eval(feed_dict={
 				self.x: mnist.test.images, self.y_: mnist.test.labels, self.keep_prob: 1.0}))
 
-			saver.save(sess, './mnist_models/mnist.ckpt')
+			saver.save(sess, self.model_name)
 		end_toc = time.clock()
 		print('Time for training: {}'.format(end_toc - start_tic))
 
@@ -102,7 +103,7 @@ class MNIST(object):
 		sess = tf.Session()
 		saver = tf.train.Saver()
 
-		saver.restore(sess, './mnist_models/mnist.ckpt')
+		saver.restore(sess, self.model_name)
 		# from IPython import embed; embed()
 		y_pred = sess.run(y_conv, feed_dict={
 						  self.x: inputs, self.keep_prob: 1.0})
