@@ -13,8 +13,7 @@ from layers import *
 
 DATASET = 'swissroll' # 8gaussians, 25gaussians, swissroll
 N_POINTS = 25
-RANGE = 3
-LAMBDA = .1
+LAMBDA = 10
 CRITIC_ITERS = 5
 
 # lib.print_model_settings(locals().copy())
@@ -23,35 +22,38 @@ class VGAN(object):
     def __init__(self, model_folder):
         self.dim_z = 128  # Noise size
         self.im_size = 28
-        self.dim_x = self.im_size ** 2  # Real input Size
+        self.dim_x = 3 * self.im_size ** 2  # Real input Size
         self.dim_h = 64  # hidden layers
-        self.model_name = model_folder + '/vgan_mnist.ckpt'
+        self.model_name = model_folder + '/vgan_mnist_1k.ckpt'
         self.Z = tf.placeholder(tf.float32, shape=[None, self.dim_z])
         self.X = tf.placeholder(tf.float32, shape=[None, self.dim_x])
 
     def generator(self, z):
         fc1 = lib.ops.linear.Linear('Generator.Input', self.dim_z, 4*4*4*self.dim_h, z)
+        fc1 = lib.ops.batchnorm.Batchnorm('Generator.BN1', [0], fc1)
         fc1 = tf.nn.relu(fc1)
         out_fc1 = tf.reshape(fc1, [-1, 4*self.dim_h, 4, 4])
 
         deconv1 = lib.ops.deconv2d.Deconv2D('Generator.2', 4*self.dim_h, 2*self.dim_h, 5, out_fc1)
+        deconv1 = lib.ops.batchnorm.Batchnorm('Generator.BN2', [0,2,3], deconv1)
         deconv1 = tf.nn.relu(deconv1)
         out_deconv1 = deconv1[:,:,:7,:7]
 
         deconv2 = lib.ops.deconv2d.Deconv2D('Generator.3', 2*self.dim_h, self.dim_h, 5, out_deconv1)
+        deconv2 = lib.ops.batchnorm.Batchnorm('Generator.BN3', [0,2,3], deconv2)
         out_deconv2 = tf.nn.relu(deconv2)
 
-        deconv3 = lib.ops.deconv2d.Deconv2D('Generator.5', self.dim_h, 1, 5, out_deconv2)
-        out_deconv3 = tf.nn.sigmoid(deconv3)
+        deconv3 = lib.ops.deconv2d.Deconv2D('Generator.5', self.dim_h, 3, 5, out_deconv2)
+        out_deconv3 = tf.tanh(deconv3)
 
         # different from DCGAN - deconv 4
         return tf.reshape(out_deconv3, [-1, self.dim_x])
 
     def discriminator(self, x):
         # Is it correct - 1 channel in 2nd pos
-        im = tf.reshape(x, [-1, 1, self.im_size, self.im_size])
+        im = tf.reshape(x, [-1, 3, self.im_size, self.im_size])
 
-        conv1 = lib.ops.conv2d.Conv2D('Discriminator.1', 1, self.dim_h, 5, im, stride=2)
+        conv1 = lib.ops.conv2d.Conv2D('Discriminator.1', 3, self.dim_h, 5, im, stride=2)
         out_conv1 = LeakyReLU(conv1)
 
         conv2 = lib.ops.conv2d.Conv2D('Discriminator.2', self.dim_h, 2*self.dim_h, 5, out_conv1, stride=2)
@@ -69,7 +71,7 @@ class VGAN(object):
         # sample from a gaussian distribution
         return np.random.normal(size=[m, n], loc = 0, scale = 1)
 
-    def train(self, gen, batch_size, n_iters, print_counter, out_path):
+    def train(self, gen, batch_size, n_iters, print_counter, inp_path, out_path):
         G_sample = self.generator(self.Z)
         D_fake = self.discriminator(G_sample)
         D_real = self.discriminator(self.X)
@@ -113,7 +115,7 @@ class VGAN(object):
             start_tic = time.clock()
             tic = time.clock()
             for it in range(n_iters):
-                _data, _ = gen.train.next_batch(batch_size)
+                _data, _ = next(gen)
                 # from IPython import embed; embed()
                 _, D_loss_curr = sess.run([D_solver, D_loss], feed_dict={
                     self.X: _data, self.Z: self.sample_z(batch_size, self.dim_z)})
@@ -127,13 +129,8 @@ class VGAN(object):
                     # Plot:
                     samples = sess.run(G_sample,
                         feed_dict={self.Z: self.sample_z(N_POINTS, self.dim_z)})
-                    save_fig_mnist25(samples, out_path, idx)
-                    # could_load, checkpoint_counter = self.load(self.checkpoint_dir)
-                    # if could_load:
-                    #     counter = checkpoint_counter
-                    #     print(" [*] Load SUCCESS")
-                    # else:
-                    #     print(" [!] Load failed...")
+                    save_fig_mnist_color_25(samples, out_path, idx)
+                    save_fig_mnist_color_25(_data[:25], inp_path, idx)
                 if np.mod(it, 2000) == 2:
                     saver.save(sess, self.model_name, global_step=it)
 
@@ -147,7 +144,7 @@ class VGAN(object):
         G_sample = self.generator(self.Z)
         sess = tf.Session()
         saver = tf.train.Saver()
-        saver.restore(sess, "../models/vgan_mnist.ckpt-28002")
+        saver.restore(sess, "../models/vgan_mnist_1k.ckpt-28002")
         # while True:
         #     samples = sess.run(G_sample,
         #                feed_dict={self.Z: self.sample_z(m, self.dim_z)})
