@@ -2,16 +2,15 @@ import tensorflow as tf
 import numpy as np
 import os
 import time
-from tensorflow.examples.tutorials.mnist import input_data
 import tflib as lib
 import tflib.ops.conv2d
 import tflib.ops.deconv2d
 import tflib.ops.linear
+import tflib.ops.batchnorm
 
 from helpers import *
 from layers import *
 
-DATASET = 'swissroll' # 8gaussians, 25gaussians, swissroll
 N_POINTS = 25
 LAMBDA = 10
 CRITIC_ITERS = 5
@@ -44,7 +43,7 @@ class VGAN(object):
         out_deconv2 = tf.nn.relu(deconv2)
 
         deconv3 = lib.ops.deconv2d.Deconv2D('Generator.5', self.dim_h, 3, 5, out_deconv2)
-        out_deconv3 = tf.tanh(deconv3)
+        out_deconv3 = tf.sigmoid(deconv3)
 
         # different from DCGAN - deconv 4
         return tf.reshape(out_deconv3, [-1, self.dim_x])
@@ -129,8 +128,8 @@ class VGAN(object):
                     # Plot:
                     samples = sess.run(G_sample,
                         feed_dict={self.Z: self.sample_z(N_POINTS, self.dim_z)})
-                    save_fig_mnist_color_25(samples, out_path, idx)
-                    save_fig_mnist_color_25(_data[:25], inp_path, idx)
+                    save_fig_color(samples, out_path, idx)
+                    save_fig_color(_data[:25], inp_path, idx)
                 if np.mod(it, 2000) == 2:
                     saver.save(sess, self.model_name, global_step=it)
 
@@ -144,7 +143,7 @@ class VGAN(object):
         G_sample = self.generator(self.Z)
         sess = tf.Session()
         saver = tf.train.Saver()
-        saver.restore(sess, "../models/vgan_mnist_1k.ckpt-28002")
+        saver.restore(sess, self.model_name)
         # while True:
         #     samples = sess.run(G_sample,
         #                feed_dict={self.Z: self.sample_z(m, self.dim_z)})

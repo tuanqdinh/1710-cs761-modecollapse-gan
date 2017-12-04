@@ -27,13 +27,15 @@ def inf_train_gen(DATASET, BATCH_SIZE):
                 yield dataset[i*BATCH_SIZE:(i+1)*BATCH_SIZE]
 
     elif DATASET == 'stacked_mnist':
-        a = Reader.DS()
+        ds = Reader.DS('stacked_train.npy')
         while True:
-            p = np.random.permutation(a.size)
-            dd = a.data[p]
-            ll = a.data[p]
-            for i in range(int(a.size/BATCH_SIZE)):
-                yield dd[i*BATCH_SIZE:(i+1)*BATCH_SIZE], ll[i*BATCH_SIZE:(i+1)*BATCH_SIZE]
+            # p = np.random.permutation(a.size)
+            # dd = ds.data[p]
+            # ll = ds.labels[p]
+            for i in range(int(ds.size / BATCH_SIZE)):
+                start = i * BATCH_SIZE
+                end = (i + 1) * BATCH_SIZE
+                yield ds.images[start:end], ds.labels[start:end]
 
     elif DATASET == 'swissroll':
 
@@ -94,7 +96,7 @@ def plot(N_POINTS, RANGE, disc_map, true_dist, samples, idx, out_path):
     plt.savefig(out_path + '/frame'+str(idx)+'.jpg')
 
 
-def save_fig_mnist25(samples, out_path, idx):
+def save_fig_mnist(samples, out_path, idx):
     fig = plt.figure(figsize=(5, 5))
     gs = gridspec.GridSpec(5, 5)
     gs.update(wspace=0.05, hspace=0.05)
@@ -110,7 +112,7 @@ def save_fig_mnist25(samples, out_path, idx):
     plt.savefig(out_path + '/{}.png'.format(str(idx).zfill(3)), bbox_inches='tight')
     plt.close(fig)
 
-def save_fig_mnist_color_25(samples, out_path, idx):
+def save_fig_color(samples, out_path, idx):
     fig = plt.figure(figsize=(5, 5))
     gs = gridspec.GridSpec(5, 5)
     gs.update(wspace=0.05, hspace=0.05)
@@ -122,7 +124,9 @@ def save_fig_mnist_color_25(samples, out_path, idx):
         ax.set_yticklabels([])
         ax.set_aspect('equal')
         s = sample.reshape(3, 28, 28)
-        plt.imshow(s.transpose(1, 2, 0))
+        s = s.transpose(1, 2, 0)
+        plt.imshow(s, cmap='Greys_r')
+
 
     plt.savefig(out_path + '/{}.png'.format(str(idx).zfill(3)), bbox_inches='tight')
     plt.close(fig)
