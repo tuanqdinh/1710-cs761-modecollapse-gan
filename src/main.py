@@ -37,18 +37,17 @@ if __name__ == '__main__':
         gg.train(gen, batch_size, n_iters, print_counter, inp_path, out_path)
     # Generate
     if testing:
-        n_samples = 3000
+        n_samples = 10000
         out_path = os.path.abspath('../out/test/')
         if not os.path.exists(out_path):
             os.makedirs(out_path)
 
         samples = gg.generate_sample(n_samples) # yields
-        np.save('../out/synthetic_samples.npy', samples)
-        # all_samples = []
-        # for i in range(int(n_samples/25)):
-        #     start = i * 25
-        #     end = (i + 1) * 25
-        #     save_fig_color(samples[start:end, :], out_path, i)
+        np.save('../out/synthetic_samples_2.npy', samples)
+        for i in range(int(n_samples/25)):
+            start = i * 25
+            end = (i + 1) * 25
+            save_fig_color(samples[start:end, :], out_path, i)
 
         tf.reset_default_graph() # important
         nnet = MNIST()

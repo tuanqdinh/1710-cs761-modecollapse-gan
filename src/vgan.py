@@ -23,7 +23,7 @@ class VGAN(object):
         self.im_size = 28
         self.dim_x = 3 * self.im_size ** 2  # Real input Size
         self.dim_h = 64  # hidden layers
-        self.model_name = model_folder + '/vgan_mnist_1k.ckpt'
+        self.model_name = model_folder + 'vgan_mnist_1k.ckpt'
         self.Z = tf.placeholder(tf.float32, shape=[None, self.dim_z])
         self.X = tf.placeholder(tf.float32, shape=[None, self.dim_x])
 

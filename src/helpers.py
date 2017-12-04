@@ -130,3 +130,10 @@ def save_fig_color(samples, out_path, idx):
 
     plt.savefig(out_path + '/{}.png'.format(str(idx).zfill(3)), bbox_inches='tight')
     plt.close(fig)
+
+def KL(dist_a, dist_b):
+    alpha = 0.0001
+    y = (dist_a+alpha)/(dist_b+alpha)
+    KL = tf.reduce_mean(-tf.nn.softmax_cross_entropy_with_logits(labels = dist_a, logits = dist_b))
+    c = tf.reduce_mean(-tf.nn.softmax_cross_entropy_with_logits(labels = dist_a, logits = dist_a))
+    return KL-c
