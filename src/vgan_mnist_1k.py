@@ -8,6 +8,7 @@ import tflib.ops.deconv2d
 import tflib.ops.linear
 import tflib.ops.batchnorm
 
+from helpers import *
 from layers import *
 
 N_POINTS = 25
@@ -19,28 +20,51 @@ CRITIC_ITERS = 5
 class VGAN(object):
     def __init__(self, model_folder):
         self.dim_z = 128  # Noise size
-        self.dim_x = 1200  # Real input Size
-        self.dim_h = 2000  # hidden layers
-        self.dim_h1 = 2000
-        self.dim_h2 = 2000
-        self.model_name = model_folder + 'vgan_1200D.ckpt'
+        self.im_size = 28
+        self.dim_x = 3 * self.im_size ** 2  # Real input Size
+        self.dim_h = 64  # hidden layers
+        self.model_name = model_folder + 'vgan_mnist_1k.ckpt'
         self.Z = tf.placeholder(tf.float32, shape=[None, self.dim_z])
         self.X = tf.placeholder(tf.float32, shape=[None, self.dim_x])
 
     def generator(self, z):
-        output = ReLULayer('Generator.1', self.dim_z, self.dim_h, z)
-        output = ReLULayer('Generator.2', self.dim_h, self.dim_h1, output)
-        output = ReLULayer('Generator.3', self.dim_h1, self.dim_h2, output)
-        output = lib.ops.linear.Linear('Generator.4', self.dim_h2, self.dim_x, output)
-        return output
+        fc1 = lib.ops.linear.Linear('Generator.Input', self.dim_z, 4*4*4*self.dim_h, z)
+        fc1 = lib.ops.batchnorm.Batchnorm('Generator.BN1', [0], fc1)
+        fc1 = tf.nn.relu(fc1)
+        out_fc1 = tf.reshape(fc1, [-1, 4*self.dim_h, 4, 4])
+
+        deconv1 = lib.ops.deconv2d.Deconv2D('Generator.2', 4*self.dim_h, 2*self.dim_h, 5, out_fc1)
+        deconv1 = lib.ops.batchnorm.Batchnorm('Generator.BN2', [0,2,3], deconv1)
+        deconv1 = tf.nn.relu(deconv1)
+        out_deconv1 = deconv1[:,:,:7,:7]
+
+        deconv2 = lib.ops.deconv2d.Deconv2D('Generator.3', 2*self.dim_h, self.dim_h, 5, out_deconv1)
+        deconv2 = lib.ops.batchnorm.Batchnorm('Generator.BN3', [0,2,3], deconv2)
+        out_deconv2 = tf.nn.relu(deconv2)
+
+        deconv3 = lib.ops.deconv2d.Deconv2D('Generator.5', self.dim_h, 3, 5, out_deconv2)
+        out_deconv3 = tf.sigmoid(deconv3)
+
+        # different from DCGAN - deconv 4
+        return tf.reshape(out_deconv3, [-1, self.dim_x])
 
     def discriminator(self, x):
-        output = ReLULayer('Discriminator.1', self.dim_x, self.dim_h2, x)
-        output = ReLULayer('Discriminator.2', self.dim_h2, self.dim_h1, output)
-        output = ReLULayer('Discriminator.3', self.dim_h1, self.dim_h, output)
-        output = lib.ops.linear.Linear('Discriminator.4', self.dim_h, 1, output)
-        # output = tf.nn.sigmoid(output)
-        return tf.reshape(output, [-1])
+        # Is it correct - 1 channel in 2nd pos
+        im = tf.reshape(x, [-1, 3, self.im_size, self.im_size])
+
+        conv1 = lib.ops.conv2d.Conv2D('Discriminator.1', 3, self.dim_h, 5, im, stride=2)
+        out_conv1 = LeakyReLU(conv1)
+
+        conv2 = lib.ops.conv2d.Conv2D('Discriminator.2', self.dim_h, 2*self.dim_h, 5, out_conv1, stride=2)
+        out_conv2 = LeakyReLU(conv2)
+
+        conv3 = lib.ops.conv2d.Conv2D('Discriminator.3', 2*self.dim_h, 4*self.dim_h, 5, out_conv2, stride=2)
+        out_conv3 = LeakyReLU(conv3)
+
+        fc = tf.reshape(out_conv3, [-1, 4*4*4*self.dim_h])
+        out_fc = lib.ops.linear.Linear('Discriminator.Output', 4*4*4*self.dim_h, 1, fc)
+
+        return tf.reshape(out_fc, [-1])
 
     def sample_z(self, m, n):
         # sample from a gaussian distribution
@@ -87,15 +111,6 @@ class VGAN(object):
         with tf.Session() as sess:
             sess.run(tf.global_variables_initializer())
             saver = tf.train.Saver()
-
-            # ckpt = tf.train.get_checkpoint_state()
-            # if ckpt:
-            #     saver.restore(sess, self.model_name)
-            #     counter = checkpoint_counter
-            #     print(" [*] Load SUCCESS")
-            # else:
-            #     print(" [!] Load failed...")
-
             start_tic = time.clock()
             tic = time.clock()
             for it in range(n_iters):
@@ -110,7 +125,11 @@ class VGAN(object):
                     toc = time.clock()
                     print('Iter: {}\tD-loss: {:.5f}\tG-loss: {:.5f}\t Time: {:.5}\t'.format(it, D_loss_curr, G_loss_curr, toc - tic))
                     tic = time.clock()
-
+                    # Plot:
+                    samples = sess.run(G_sample,
+                        feed_dict={self.Z: self.sample_z(N_POINTS, self.dim_z)})
+                    save_fig_color(samples, out_path, idx)
+                    save_fig_color(_data[:25], inp_path, idx)
                 if np.mod(it, 2000) == 2:
                     saver.save(sess, self.model_name, global_step=it)
 
@@ -125,6 +144,10 @@ class VGAN(object):
         sess = tf.Session()
         saver = tf.train.Saver()
         saver.restore(sess, self.model_name)
+        # while True:
+        #     samples = sess.run(G_sample,
+        #                feed_dict={self.Z: self.sample_z(m, self.dim_z)})
+        #     yield samples
         samples = sess.run(G_sample,
                    feed_dict={self.Z: self.sample_z(m, self.dim_z)})
         sess.close()

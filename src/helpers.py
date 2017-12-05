@@ -28,6 +28,7 @@ def inf_train_gen(DATASET, BATCH_SIZE):
 
     elif DATASET == 'stacked_mnist':
         ds = Reader.DS('stacked_train.npy')
+        np.save('../dataset/Stacked_MNIST/dist_info.npy', ds.labels)
         while True:
             # p = np.random.permutation(a.size)
             # dd = ds.data[p]
@@ -37,8 +38,23 @@ def inf_train_gen(DATASET, BATCH_SIZE):
                 end = (i + 1) * BATCH_SIZE
                 yield ds.images[start:end], ds.labels[start:end]
 
-    elif DATASET == 'swissroll':
+    elif DATASET == '1200D':
+        ds = np.load('../dataset/1200D/1200D_train.npy')
+        ds = ds.item()
+        ds_images = ds['images']
+        ds_dist = ds['y_dist']
+        means = ds['means']
+        ds_size = ds_images.shape[0]
+        np.save('../dataset/1200D/dist_ydist.npy', ds_dist)
+        np.save('../dataset/1200D/dist_means.npy', means)
+        while True:
+            for i in range(int(ds_size / BATCH_SIZE)):
+                start = i * BATCH_SIZE
+                end = (i + 1) * BATCH_SIZE
+                yield ds_images[start:end], -1
 
+
+    elif DATASET == 'swissroll':
         while True:
             data = datasets.make_swiss_roll(
                 n_samples=BATCH_SIZE,
@@ -49,7 +65,6 @@ def inf_train_gen(DATASET, BATCH_SIZE):
             yield data
 
     elif DATASET == '8gaussians':
-
         scale = 2.
         centers = [
             (1,0),
@@ -131,9 +146,28 @@ def save_fig_color(samples, out_path, idx):
     plt.savefig(out_path + '/{}.png'.format(str(idx).zfill(3)), bbox_inches='tight')
     plt.close(fig)
 
-def KL(dist_a, dist_b):
-    alpha = 0.0001
-    y = (dist_a+alpha)/(dist_b+alpha)
-    KL = tf.reduce_mean(-tf.nn.softmax_cross_entropy_with_logits(labels = dist_a, logits = dist_b))
-    c = tf.reduce_mean(-tf.nn.softmax_cross_entropy_with_logits(labels = dist_a, logits = dist_a))
-    return KL-c
+def get_dist(p, n):
+    pk = np.zeros(n)
+    for x in p:
+        pk[x] += 1
+
+    _dsize = len(p)
+    for i in range(n):
+        pk[i] = pk[i] * 1.0 / _dsize
+
+    return pk
+
+def classify_dist(x, means, std=100):
+    n_modes = 10
+    dim_k = 700
+    dim_n = 1200
+    nearest_mode = -1
+    min_distance = 1000000
+    for i in range(n_modes):
+        d = np.linalg.norm(x - means[i])
+        if d < min_distance and d < 10 * std * np.sqrt(dim_k):
+            # high quality
+            min_distance = d
+            nearest_mode = i
+
+    return nearest_mode
