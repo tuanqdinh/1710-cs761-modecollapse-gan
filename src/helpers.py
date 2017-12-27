@@ -165,7 +165,7 @@ def classify_dist(x, means, std=100):
     min_distance = 1000000
     for i in range(n_modes):
         d = np.linalg.norm(x - means[i])
-        if d < min_distance and d < 10 * std * np.sqrt(dim_k):
+        if d < min_distance and d < 100 * std: #* np.sqrt(dim_k):
             # high quality
             min_distance = d
             nearest_mode = i

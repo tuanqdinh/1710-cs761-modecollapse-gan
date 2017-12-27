@@ -25,7 +25,7 @@ class VGAN(object):
         self.im_size = 28
         self._x = self.im_size ** 2  # Real input Size
         self.dim_h = 64  # hidden layers
-        self.model_name = model_folder + '/vgan_mnist.ckpt'
+        self.model_name = model_folder + '/vgan_mnist_ours.ckpt'
         self.Z = tf.placeholder(tf.float32, shape=[None, self.dim_z])
         self.X = tf.placeholder(tf.float32, shape=[None, self._x])
 
@@ -69,7 +69,7 @@ class VGAN(object):
         # sample from a gaussian distribution
         return np.random.normal(size=[m, n], loc = 0, scale = 1)
 
-    def build_model(self, batch_size, n_iters, print_counter,
+    def train(self, batch_size, n_iters, print_counter, inp_path,
                     out_path):
         G_sample = self.generator(self.Z)
         D_fake = self.discriminator(G_sample)
@@ -92,6 +92,9 @@ class VGAN(object):
         slopes = tf.sqrt(tf.reduce_sum(tf.square(gradients), reduction_indices=[1]))
         gradient_penalty = tf.reduce_mean((slopes-1)**2)
         D_loss += LAMBDA*gradient_penalty
+
+        mean_diff = tf.reduce_mean(self.X) - tf.reduce_mean(G_sample)
+        G_loss += 0.01 * mean_diff
 
         disc_params = lib.params_with_name('Discriminator')
         gen_params = lib.params_with_name('Generator')
@@ -122,7 +125,7 @@ class VGAN(object):
                 _, D_loss_curr = sess.run([D_solver, D_loss], feed_dict={
                     self.X: _data, self.Z: self.sample_z(batch_size, self.dim_z)})
                 _, G_loss_curr = sess.run([G_solver, G_loss], feed_dict={
-                    self.Z: self.sample_z(batch_size, self.dim_z)})
+                    self.X: _data, self.Z: self.sample_z(batch_size, self.dim_z)})
                 if np.mod(it, print_counter) == 0:
                     idx = it // print_counter
                     toc = time.clock()
@@ -131,18 +134,13 @@ class VGAN(object):
                     # Plot:
                     samples = sess.run(G_sample,
                         feed_dict={self.Z: self.sample_z(N_POINTS, self.dim_z)})
-                    save_fig_mnist25(samples, out_path, idx)
-                    # could_load, checkpoint_counter = self.load(self.checkpoint_dir)
-                    # if could_load:
-                    #     counter = checkpoint_counter
-                    #     print(" [*] Load SUCCESS")
-                    # else:
-                    #     print(" [!] Load failed...")
+                    save_fig_mnist(samples[:25], out_path, idx)
+                    save_fig_mnist(_data[:25], inp_path, idx)
                 if np.mod(it, 2000) == 2:
                     saver.save(sess, self.model_name, global_step=it)
 
             saver.save(sess, self.model_name)
-            
+
             end_toc = time.clock()
             print('Time for training: {}'.format(end_toc - start_tic))
 
@@ -151,7 +149,7 @@ class VGAN(object):
         G_sample = self.generator(self.Z)
         sess = tf.Session()
         saver = tf.train.Saver()
-        saver.restore(sess, "../models/vgan_mnist.ckpt-28002")
+        saver.restore(sess, self.model_name)
         # while True:
         #     samples = sess.run(G_sample,
         #                feed_dict={self.Z: self.sample_z(m, self.dim_z)})

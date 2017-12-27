@@ -6,7 +6,7 @@ from helpers import *
 import tflib as lib
 import tflib.ops.linear
 
-DATASET = '25gaussians' # 8gaussians, 25gaussians, swissroll
+DATASET = '8gaussians' # 8gaussians, 25gaussians, swissroll
 N_POINTS = 128
 RANGE = 3
 LAMBDA = .1
@@ -75,6 +75,8 @@ class VGAN(object):
 
         D_loss += LAMBDA*gradient_penalty
 
+        mean_diff = tf.reduce_mean(self.X) - tf.reduce_mean(G_sample)
+        G_loss += 0.01 * mean_diff
 
         disc_params = lib.params_with_name('Discriminator')
         gen_params = lib.params_with_name('Generator')
@@ -102,7 +104,7 @@ class VGAN(object):
                 _, D_loss_curr = sess.run([D_solver, D_loss], feed_dict={
                     self.X: _data, self.Z: self.sample_z(batch_size, self.dim_z)})
                 _, G_loss_curr = sess.run([G_solver, G_loss], feed_dict={
-                    self.Z: self.sample_z(batch_size, self.dim_z)})
+                    self.X: _data, self.Z: self.sample_z(batch_size, self.dim_z)})
                 if np.mod(it, print_counter) == 0:
                     idx = it // print_counter
                     toc = time.clock()

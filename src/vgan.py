@@ -13,6 +13,7 @@ from layers import *
 N_POINTS = 25
 LAMBDA = 10
 CRITIC_ITERS = 5
+GAMMA = 1
 
 # lib.print_model_settings(locals().copy())
 
@@ -23,7 +24,7 @@ class VGAN(object):
         self.dim_h = 2000  # hidden layers
         self.dim_h1 = 2000
         self.dim_h2 = 2000
-        self.model_name = model_folder + 'vgan_1200D.ckpt'
+        self.model_name = model_folder + 'vgan_1200D_moment.ckpt'
         self.Z = tf.placeholder(tf.float32, shape=[None, self.dim_z])
         self.X = tf.placeholder(tf.float32, shape=[None, self.dim_x])
 
@@ -69,6 +70,11 @@ class VGAN(object):
         gradient_penalty = tf.reduce_mean((slopes-1)**2)
         D_loss += LAMBDA*gradient_penalty
 
+        # var_d = tf.reduce_mean(tf.square(D_real)) - D_loss_real**2
+        # var_g = tf.reduce_mean(tf.square(D_fake)) - D_loss_fake**2
+        mean_diff = tf.reduce_mean(self.X) - tf.reduce_mean(G_sample)
+        G_loss += GAMMA * mean_diff
+
         disc_params = lib.params_with_name('Discriminator')
         gen_params = lib.params_with_name('Generator')
 
@@ -104,7 +110,7 @@ class VGAN(object):
                 _, D_loss_curr = sess.run([D_solver, D_loss], feed_dict={
                     self.X: _data, self.Z: self.sample_z(batch_size, self.dim_z)})
                 _, G_loss_curr = sess.run([G_solver, G_loss], feed_dict={
-                    self.Z: self.sample_z(batch_size, self.dim_z)})
+                    self.X: _data, self.Z: self.sample_z(batch_size, self.dim_z)})
                 if np.mod(it, print_counter) == 0:
                     idx = it // print_counter
                     toc = time.clock()

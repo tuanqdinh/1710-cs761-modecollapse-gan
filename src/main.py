@@ -70,11 +70,13 @@ if __name__ == '__main__':
             pred = classify_dist(s, means, 100)
             if pred > -1:
                 y_pred.append(pred)
-        x = np.unique(y_pred)
+        pk = get_dist(y_pred, 10)
+        x = [e for e in range(10) if pk[e] * n_samples > 2]
+        x = np.unique(x)
         print("{} modes in {} samples".format(len(x), n_samples))
 
         # Calculate KL
-        pk = get_dist(y_pred, 10)
+
         ydist = np.load(ds_folder + 'dist_ydist.npy')
         qk = ydist/np.sum(ydist)
         print("qk = ", qk)
