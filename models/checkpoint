@@ -1,0 +1,6 @@
+model_checkpoint_path: "vgan_gaussian.ckpt-28002"
+all_model_checkpoint_paths: "vgan_gaussian.ckpt-20002"
+all_model_checkpoint_paths: "vgan_gaussian.ckpt-22002"
+all_model_checkpoint_paths: "vgan_gaussian.ckpt-24002"
+all_model_checkpoint_paths: "vgan_gaussian.ckpt-26002"
+all_model_checkpoint_paths: "vgan_gaussian.ckpt-28002"
